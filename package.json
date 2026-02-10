@@ -1,0 +1,12 @@
+{
+  "name": "ai-docs-pdf-generator",
+  "private": true,
+  "scripts": {
+    "generate-pdf": "node generate-pdf.mjs",
+    "watch": "node generate-pdf.mjs --watch"
+  },
+  "dependencies": {
+    "puppeteer": "^24.2.0",
+    "pdf-lib": "^1.17.1"
+  }
+}

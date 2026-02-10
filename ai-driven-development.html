@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI駆動開発 実践ガイド</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --page-width: 210mm;
+      --page-height: 297mm;
+      --page-margin: 16mm;
+      --color-bg: #0a0a0f;
+      --color-surface: #141420;
+      --color-surface-light: #1e1e2e;
+      --color-text: #f2f2f7;
+      --color-text-muted: #c0c0d0;
+      --color-accent: #8b7cf8;
+      --color-accent-light: #b8aaff;
+      --color-gold: #e0b45c;
+      --color-gold-light: #f5dfa0;
+      --color-cyan: #6ed4e4;
+      --color-divider: rgba(255,255,255,0.08);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #050508;
+      font-family: 'Noto Sans JP', 'Inter', sans-serif;
+      color: var(--color-text);
+      -webkit-font-smoothing: antialiased;
+      font-feature-settings: 'palt' 1;
+    }
+
+    /* PDF Export Button */
+    .export-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--color-divider);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .export-bar-title {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      letter-spacing: 0.05em;
+    }
+    .export-btn {
+      background: var(--color-accent);
+      color: #fff;
+      border: none;
+      padding: 8px 24px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Noto Sans JP', sans-serif;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .export-btn:hover {
+      background: var(--color-accent-light);
+      transform: translateY(-1px);
+    }
+
+    /* Page Container */
+    .pages-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 72px 0 48px;
+      gap: 32px;
+    }
+
+    .page {
+      width: var(--page-width);
+      height: var(--page-height);
+      background: var(--color-bg);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 60px rgba(0,0,0,0.5);
+    }
+
+    /* Subtle noise texture on pages */
+    .page::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .page-inner {
+      padding: var(--page-margin);
+      position: relative;
+      z-index: 2;
+      height: var(--page-height);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Page Number */
+    .page-number {
+      position: absolute;
+      bottom: 12mm;
+      right: 16mm;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      letter-spacing: 0.15em;
+      z-index: 10;
+    }
+
+    /* ======================== */
+    /* COVER PAGE               */
+    /* ======================== */
+    .cover {
+      position: relative;
+    }
+    .cover .page-inner {
+      padding: 0;
+      justify-content: flex-end;
+    }
+    .cover-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+    .cover-bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.55;
+    }
+    .cover-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(10,10,15,0.1) 0%,
+        rgba(10,10,15,0.4) 40%,
+        rgba(10,10,15,0.92) 75%,
+        rgba(10,10,15,1) 100%
+      );
+      z-index: 2;
+    }
+    .cover-content {
+      position: relative;
+      z-index: 3;
+      padding: 0 20mm 22mm;
+    }
+    .cover-label {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      color: var(--color-accent-light);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+    .cover-title {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1.3;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .cover-subtitle {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      line-height: 1.7;
+      margin-bottom: 28px;
+      font-weight: 300;
+    }
+    .cover-meta {
+      display: flex;
+      gap: 24px;
+      font-size: 10px;
+      color: var(--color-text-muted);
+      letter-spacing: 0.05em;
+    }
+    .cover-meta span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cover-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--color-accent);
+    }
+
+    /* ======================== */
+    /* SECTION DIVIDER PAGE     */
+    /* ======================== */
+    .section-divider .page-inner {
+      padding: 0;
+      justify-content: center;
+      align-items: center;
+    }
+    .section-divider::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+      background: var(--section-bg) center center / 130% 130% no-repeat;
+      opacity: 0.55;
+      filter: saturate(0.8);
+    }
+    .section-divider-gradient {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        to bottom,
+        rgba(10,10,15,0) 0%,
+        rgba(10,10,15,0.5) 30%,
+        rgba(10,10,15,0.5) 70%,
+        rgba(10,10,15,0) 100%
+      );
+      z-index: 2;
+    }
+    .section-divider-content {
+      position: relative;
+      z-index: 3;
+      padding: 0 24mm;
+      text-align: center;
+      max-width: 100%;
+    }
+    .section-divider-part-label {
+      font-size: 12px;
+      letter-spacing: 0.4em;
+      color: var(--color-accent-light);
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .section-divider-title {
+      font-size: 36px;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 8px;
+      line-height: 1.3;
+    }
+    .section-divider-subtitle {
+      font-size: 16px;
+      color: var(--color-text-muted);
+      margin-bottom: 32px;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+    .section-divider-summary {
+      text-align: left;
+      border-left: 3px solid var(--color-accent);
+      padding: 16px 20px;
+      margin: 0 auto 28px;
+      max-width: 380px;
+      background: rgba(139,124,248,0.06);
+      border-radius: 0 5px 5px 0;
+    }
+    .section-divider-summary p {
+      font-size: 12px;
+      line-height: 1.9;
+      color: var(--color-text);
+      margin-bottom: 0;
+    }
+    .section-divider-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    .section-divider-sections .sd-item {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .section-divider-sections .sd-item:last-child {
+      border-bottom: none;
+    }
+    .section-divider-sections .sd-num {
+      color: var(--color-accent-light);
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      min-width: 20px;
+    }
+
+    /* ======================== */
+    /* TYPOGRAPHY                */
+    /* ======================== */
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: var(--color-accent-light);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .section-title {
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    .section-title-lg {
+      font-size: 28px;
+    }
+    .section-desc {
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+      line-height: 1.8;
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+      margin-top: 18px;
+    }
+    h3:first-child { margin-top: 0; }
+
+    p, .body-text {
+      font-size: 12px;
+      line-height: 1.85;
+      color: var(--color-text);
+      margin-bottom: 10px;
+      font-weight: 400;
+    }
+
+    .text-muted {
+      color: var(--color-text-muted);
+    }
+
+    .text-small {
+      font-size: 11px;
+    }
+
+    strong {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* ======================== */
+    /* COMPONENTS               */
+    /* ======================== */
+
+    /* Horizontal Divider */
+    .divider {
+      height: 1px;
+      background: var(--color-divider);
+      margin: 16px 0;
+    }
+
+    /* Section Image Banner */
+    .section-banner {
+      width: calc(100% + 32mm);
+      margin-left: -16mm;
+      margin-top: calc(-1 * var(--page-margin));
+      height: 54mm;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .section-banner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .section-banner-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(10,10,15,0.1) 0%,
+        rgba(10,10,15,0.3) 50%,
+        rgba(10,10,15,0.85) 100%
+      );
+    }
+    .section-banner-text {
+      position: absolute;
+      bottom: 14px;
+      left: 16mm;
+      right: 16mm;
+      z-index: 2;
+    }
+
+    /* Card */
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-divider);
+      border-radius: 5px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .card p {
+      font-size: 11px;
+      margin-bottom: 0;
+    }
+
+    /* Highlight Box */
+    .highlight-box {
+      background: linear-gradient(135deg, rgba(139,124,248,0.12) 0%, rgba(110,212,228,0.08) 100%);
+      border-left: 4px solid var(--color-accent);
+      border-radius: 0 5px 5px 0;
+      padding: 16px 18px;
+      margin: 14px 0;
+    }
+    .highlight-box p {
+      margin-bottom: 0;
+      color: var(--color-text);
+    }
+
+    /* Gold Highlight */
+    .gold-box {
+      background: linear-gradient(135deg, rgba(224,180,92,0.12) 0%, rgba(245,223,160,0.06) 100%);
+      border-left: 4px solid var(--color-gold);
+      border-radius: 0 5px 5px 0;
+      padding: 16px 18px;
+      margin: 14px 0;
+    }
+    .gold-box p { margin-bottom: 0; color: var(--color-text); }
+    .gold-box .card-title { color: var(--color-gold-light); }
+
+    /* Columns */
+    .cols-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .cols-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Numbered List */
+    .num-list {
+      counter-reset: numlist;
+      list-style: none;
+      padding: 0;
+    }
+    .num-list li {
+      counter-increment: numlist;
+      position: relative;
+      padding-left: 32px;
+      font-size: 12px;
+      line-height: 1.8;
+      margin-bottom: 10px;
+      color: var(--color-text);
+      font-weight: 400;
+    }
+    .num-list li::before {
+      content: counter(numlist, decimal-leading-zero);
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-accent-light);
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Tag */
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(124,108,240,0.12);
+      color: var(--color-accent-light);
+      font-weight: 500;
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+    .tag-gold {
+      background: rgba(212,168,83,0.12);
+      color: var(--color-gold-light);
+    }
+
+    /* Mini Column */
+    .mini-column {
+      background: var(--color-surface);
+      border-radius: 5px;
+      padding: 14px 16px;
+      margin: 14px 0;
+      border: 1px solid rgba(212,168,83,0.15);
+      position: relative;
+    }
+    .mini-column::before {
+      content: 'COLUMN';
+      position: absolute;
+      top: -8px;
+      left: 14px;
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      color: var(--color-gold);
+      background: var(--color-surface);
+      padding: 0 6px;
+      font-weight: 600;
+    }
+    .mini-column .card-title {
+      color: var(--color-gold-light);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    /* Phase badge */
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--color-accent-light);
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(124,108,240,0.1);
+      border: 1px solid rgba(124,108,240,0.2);
+      margin-bottom: 10px;
+    }
+
+    /* TOC */
+    .toc-section-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-accent-light);
+      letter-spacing: 0.15em;
+      padding: 10px 0 4px;
+      margin-top: 8px;
+    }
+    .toc-item {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-divider);
+      font-size: 12px;
+    }
+    .toc-num {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      color: var(--color-accent-light);
+      font-size: 13px;
+      min-width: 30px;
+    }
+    .toc-text {
+      flex: 1;
+      color: var(--color-text);
+      font-weight: 500;
+    }
+    .toc-page {
+      color: var(--color-text-muted);
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Flow diagram */
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .flow-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-divider);
+      border-radius: 5px;
+      padding: 10px 12px;
+      font-size: 11px;
+      text-align: center;
+      flex: 1;
+      color: var(--color-text);
+      font-weight: 500;
+    }
+    .flow-arrow {
+      color: var(--color-accent-light);
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    /* Cost bar */
+    .cost-bar {
+      background: var(--color-surface);
+      border-radius: 5px;
+      padding: 10px 14px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--color-divider);
+    }
+    .cost-bar-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      min-width: 60px;
+    }
+    .cost-bar-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .cost-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+    .cost-bar-value {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--color-accent-light);
+      font-family: 'Inter', sans-serif;
+      min-width: 70px;
+      text-align: right;
+    }
+
+    /* ======================== */
+    /* PRINT STYLES             */
+    /* ======================== */
+    @media print {
+      .export-bar { display: none !important; }
+      body {
+        background: none;
+      }
+      .pages-wrapper {
+        padding: 0;
+        gap: 0;
+      }
+      .page {
+        box-shadow: none;
+        page-break-after: always;
+        page-break-inside: avoid;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page:last-child {
+        page-break-after: auto;
+      }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Export Bar -->
+<div class="export-bar">
+  <span class="export-bar-title">AI駆動開発 実践ガイド &mdash; A4 Document</span>
+  <a class="export-btn" href="ai-driven-development.pdf" download="ai-driven-development.pdf">PDF Download</a>
+</div>
+
+<div class="pages-wrapper">
+
+<!-- ============================================================ -->
+<!-- P01: COVER                                                    -->
+<!-- ============================================================ -->
+<div class="page cover">
+  <div class="cover-bg">
+    <img src="images/a4-vertical/mineral/stack_crystal_towers_hd.png" alt="">
+  </div>
+  <div class="cover-gradient"></div>
+  <div class="page-inner">
+    <div class="cover-content">
+      <div class="cover-label">Practical Guide for KOSEN Students</div>
+      <div class="cover-title">AI駆動開発<br>実践ガイド</div>
+      <div class="cover-subtitle">
+        価値あるプロダクトを生み出すための<br>
+        AI活用のベストプラクティスと実践知
+      </div>
+      <div class="cover-meta">
+        <span><span class="cover-dot"></span>実践教育</span>
+        <span><span class="cover-dot"></span>価値創出 / 課題解決</span>
+        <span><span class="cover-dot"></span>2026</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P02: TABLE OF CONTENTS                                        -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Contents</div>
+    <div class="section-title" style="margin-bottom: 16px;">目次</div>
+
+    <div class="toc-item">
+      <span class="toc-num">01</span>
+      <span class="toc-text">はじめに + AI開発時代のリアル</span>
+      <span class="toc-page">03</span>
+    </div>
+
+    <div class="toc-section-header">PART I &mdash; 課題</div>
+    <div class="toc-item">
+      <span class="toc-num">02</span>
+      <span class="toc-text">AIが作るものはなぜ酷評されるのか</span>
+      <span class="toc-page">05</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">03</span>
+      <span class="toc-text">AIは不完全だ + 組織の課題</span>
+      <span class="toc-page">06</span>
+    </div>
+
+    <div class="toc-section-header">PART II &mdash; 解決策</div>
+    <div class="toc-item">
+      <span class="toc-num">04</span>
+      <span class="toc-text">現実世界で活躍できるAI + Claude Code</span>
+      <span class="toc-page">08</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">05</span>
+      <span class="toc-text">コンテキスト管理の実践</span>
+      <span class="toc-page">09</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">06</span>
+      <span class="toc-text">人間とAIの役割分担 / ツール選択コスト</span>
+      <span class="toc-page">10</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">07</span>
+      <span class="toc-text">テスト・品質・セキュリティ戦略</span>
+      <span class="toc-page">11</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">08</span>
+      <span class="toc-text">チーム開発と壁にぶつかった時</span>
+      <span class="toc-page">12</span>
+    </div>
+
+    <div class="toc-section-header">PART III &mdash; 実践例</div>
+    <div class="toc-item">
+      <span class="toc-num">09</span>
+      <span class="toc-text">ケーススタディ: Unity開発の教訓</span>
+      <span class="toc-page">14</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">10</span>
+      <span class="toc-text">ケーススタディ: 採用マッチングシステム 序盤</span>
+      <span class="toc-page">15</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">11</span>
+      <span class="toc-text">採用マッチングシステム 中盤・終盤</span>
+      <span class="toc-page">16</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">12</span>
+      <span class="toc-text">運用と品質管理</span>
+      <span class="toc-page">17</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-num">13</span>
+      <span class="toc-text">AI活用の幅広い事例集</span>
+      <span class="toc-page">18</span>
+    </div>
+    <div class="toc-item" style="border-bottom: none;">
+      <span class="toc-num">14</span>
+      <span class="toc-text">AIが書類をアップデートする / クロージング</span>
+      <span class="toc-page">19</span>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div class="highlight-box" style="margin-top: 16px;">
+      <p class="text-small text-muted">
+        この資料は、実践教育の一環として、価値創出と課題解決にフォーカスした課題の実施をサポートするために作成されました。技術を習得すること自体が目的ではなく、価値あるプロダクトを作ることが最大の目的です。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">02</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P03: はじめに + AI開発時代のリアル                               -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 01</div>
+    <div class="section-title">はじめに</div>
+    <div class="section-desc">なぜ今、AI駆動開発なのか</div>
+
+    <p>
+      AIコード生成の能力は、この1年で劇的に進化しました。プロトタイプの制作が数日から数時間に短縮され、個人や少人数チームでも、以前なら大規模な開発チームが必要だった規模のプロダクトを作れる時代になっています。この変化に対応できるかどうかが、今後の開発力に直結します。
+    </p>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>この資料で得られること:</strong> AIを使って<strong>価値あるプロダクトを実際に作り上げる</strong>ための実践知。ツールの使い方だけでなく、コンテキストの渡し方、品質管理、チーム開発、そして実プロジェクトで証明された方法論まで、現場で本当に必要な知識を体系的にまとめています。
+      </p>
+    </div>
+
+    <p>
+      この資料の目的は技術の習得ではありません。<strong>技術を使って価値を届けること</strong>です。だから、考え方や向き合い方まで含めた多面的な内容を掲載しています。
+    </p>
+
+    <div class="divider"></div>
+
+    <div class="section-label">Section 02</div>
+    <div class="section-title">AI開発時代のリアル</div>
+    <div class="section-desc">既存のものを組み合わせて、実用的なAIを作る時代</div>
+
+    <p>
+      最近のAI研究は、ブロックを繋ぎ合わせていくような感覚です。そのブロック一つ一つの仕組みを完全に理解しなくても使えるし、高度な数学的知識がなくてもよい。もちろん基礎知識はあったに越したことはないですが、実用的なAIを作ることが目標なら、HuggingFaceなどの既存モデルの活用がベースになります。
+    </p>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>実体験から:</strong> AI研究の企業でインターンをしていた時も、ゼロから作るのではなく、最新論文をもとにしたライブラリを活用し、最も精度の高いモデルに自社独自のデータを与えてオリジナルモデルを作るやり方が主流でした。独自モデルを作る場合も、既存研究で確立された強いベースモデルの最終出力部分を独自タスクに適合させて社会課題の解決に活かす。<strong>今ある最良のものを組み合わせ、自分のケースに適合させていく力</strong>が求められています。
+      </p>
+    </div>
+
+    <div class="gold-box">
+      <div class="card-title">AIをAIで作る時代</div>
+      <p class="text-small">
+        コード生成AIは、AI自身の開発を加速するために推進されてきた側面があります。ChatGPTもClaudeもAIモデルの開発にAIが使われているし、100%AIが作っているものもある。だから、AIを作る時もツールを作る時も、AIはどんどん活用できます。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">03</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P04: SECTION DIVIDER - PART I 課題                            -->
+<!-- ============================================================ -->
+<div class="page section-divider" style="--section-bg: url('images/a4-vertical/mineral/section_liquid_chrome_wave_hd.png')">
+  <div class="section-divider-gradient"></div>
+  <div class="page-inner">
+    <div class="section-divider-content">
+      <div class="section-divider-part-label">PART I</div>
+      <div class="section-divider-title">課題</div>
+      <div class="section-divider-subtitle">なぜAIが作るものは酷評されるのか</div>
+      <div class="section-divider-summary">
+        <p>AIの能力不足ではなく、人間側の情報提供不足が原因であることが多い。このパートでは、AI活用がうまくいかない根本的な理由と、組織が抱える構造的な問題を明らかにします。</p>
+      </div>
+      <div class="section-divider-sections">
+        <div class="sd-item"><span class="sd-num">02</span> AIが酷評される理由 + 認知システム</div>
+        <div class="sd-item"><span class="sd-num">03</span> AIは不完全だ + 組織の課題</div>
+      </div>
+    </div>
+  </div>
+  <div class="page-number">04</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P05: AIが酷評される理由 + AI認知システム                         -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 02</div>
+    <div class="section-title">AIが作るものはなぜ酷評されるのか</div>
+    <div class="section-desc">AI生成物の品質問題の本質に迫る</div>
+
+    <div class="cols-3" style="margin-bottom: 16px;">
+      <div class="card" style="border-top: 2px solid var(--color-accent);">
+        <div class="card-title" style="font-size: 12px;">人間への理解不足</div>
+        <p class="text-small text-muted">
+          AIは私たちの「当たり前」を知らない。日本のWebデザインは独特で、それが伝わっていないだけ。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-cyan);">
+        <div class="card-title" style="font-size: 12px;">時間の不足</div>
+        <p class="text-small text-muted">
+          AIも人間と同じように考えてから行動した方が精度が上がる。デフォルトではそうしてくれない場合も。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-gold);">
+        <div class="card-title" style="font-size: 12px;">学習機会の欠如</div>
+        <p class="text-small text-muted">
+          今の状況や過去の状況をAIが知る手段がほとんどない。人間でも前提知識なしでは仕事ができない。
+        </p>
+      </div>
+    </div>
+
+    <p>
+      AIは「出来ない」のではなく、私たちの置かれている立場が伝わっていないのです。特にChatUIの場合は一定の長さで回答をやめてしまう傾向があり、CLIツールや集中力が長続きするAIが好まれます。
+    </p>
+
+    <div class="gold-box">
+      <div class="card-title">解決策: コンテキストを渡す</div>
+      <p class="text-small">
+        始まる前にはコンテキストとして書類を渡してあげるべきだし、前提条件が変わったなら与える知識もアップデートしないといけない。AIの記憶力はまだ限定的だから、markdownなどの書類で補ってあげる。<code>/context</code>や<code>/docs</code>フォルダを作ることを推奨します。
+      </p>
+    </div>
+
+    <div class="mini-column">
+      <div class="card-title">システムを作る理由</div>
+      <p class="text-small text-muted" style="margin-top: 6px;">
+        システムは人間の弱さを補うことができます。人間は不完全な存在で、仕組みを完璧に運用することは出来ない。だからより完璧なシステムに任せる。あなたの思いを体現したシステムが、あなたの代わりに影響を与え続けるのです。
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3>AIと人間の認知システム</h3>
+    <p>
+      「考えるほど良い回答ができる」「複数の選択肢を考えてから選ぶと精度が高い」というAIの論文があります。これは人間でも同じです。AIはあなたが思っている以上に、人間と同じように物事を考える。つまり、AIの論文は人間の思考方法にも応用できるものが多く、AI基礎研究の知識を持っておくことは無駄ではありません。
+    </p>
+  </div>
+  <div class="page-number">05</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P06: AIは不完全だ + 組織の課題                                  -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 03</div>
+    <div class="section-title">AIは不完全だ ー でもそれは使わない理由にならない</div>
+    <div class="section-desc">高速で試行錯誤する時代へ</div>
+    <p>
+      「ただ作るだけ」から「もっと良くする」にこだわる時代に。AIで素早く作れるなら、その分改善に時間を使えます。AIによってITインフラの障害は世界規模で増えました。それでも企業はAIを使い続ける。完璧であることより、よりよい体験を重視する時代です。
+    </p>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>欠陥がないことより、よりよい体験を。</strong><br>
+        完璧を求めるのではなく、速く作って、速く検証して、速く改善する。そのサイクルを回す力がAI時代の強みになります。
+      </p>
+    </div>
+
+    <h3>同時に複数やることの大切さ</h3>
+    <p>
+      実際にやってみると「思ったのと違った」ということは絶対にあります。だから、何かをやっていることを、何かをやらない理由にするのは良くない。複数のプロジェクトがあれば、片方が不作になってもダメージが少ないし、それぞれの知見が互いに活かされます。
+    </p>
+
+    <div class="divider"></div>
+
+    <div class="section-label" style="margin-top: 4px;">AIと人間の向き合い方</div>
+    <div class="section-desc">大企業で実際にあった課題から学ぶ</div>
+
+    <div class="card" style="border-left: 3px solid #e05555; margin-bottom: 10px;">
+      <div class="card-title">上層部の怠慢が数百人の生産性を低下させる</div>
+      <p class="text-small">
+        上層部にとって一括管理しやすいAIや、ネームバリューの高いAIしか候補に含まれていない。十年前のPCで「PCって使えない」と言っているようなもの。どのAIを使うかは<strong>現場の人が決めるべき</strong>です。
+      </p>
+    </div>
+
+    <div class="card" style="border-left: 3px solid var(--color-gold); margin-bottom: 10px;">
+      <div class="card-title">ベンチマークがすべてではない</div>
+      <p class="text-small">
+        ベンチマークは参考にはなりますが、それだけで判断するのは危険です。答えのある短時間の問題が中心で、実際のケースではベンチマーク通りにいく場合もそうでない場合もある。試験の点数だけで人間の能力が決まらないのと同じです。
+      </p>
+    </div>
+
+    <div class="gold-box">
+      <div class="card-title">AIが圧倒的に優れていること</div>
+      <p class="text-small">
+        <strong>プロトタイプ制作</strong>は80点まで到達する速度が圧倒的。<strong>変換作業</strong>は入力が不足する余地がなければ精度は格段に上がる。<strong>視覚的な資料作成</strong>はAIの表現力が高く、間違いの判断もつきやすい。単純作業・単純な拡張・プロトタイプにはAIが最適ですが、未経験の実装で性能限界が来たら危険です。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">06</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P07: SECTION DIVIDER - PART II 解決策                         -->
+<!-- ============================================================ -->
+<div class="page section-divider" style="--section-bg: url('images/a4-vertical/mineral/section_fluorite_cluster_hd.png')">
+  <div class="section-divider-gradient"></div>
+  <div class="page-inner">
+    <div class="section-divider-content">
+      <div class="section-divider-part-label">PART II</div>
+      <div class="section-divider-title">解決策</div>
+      <div class="section-divider-subtitle">どうすればうまくいくのか</div>
+      <div class="section-divider-summary">
+        <p>コンテキストの提供、適切なツール選択、人間とAIの役割分担。課題を理解した上で、実践的な解決策とベストプラクティスを体系的に解説します。</p>
+      </div>
+      <div class="section-divider-sections">
+        <div class="sd-item"><span class="sd-num">04</span> 現実世界で活躍できるAI + Claude Code</div>
+        <div class="sd-item"><span class="sd-num">05</span> コンテキスト管理の実践</div>
+        <div class="sd-item"><span class="sd-num">06</span> 人間とAIの役割分担 / ツール選択コスト</div>
+        <div class="sd-item"><span class="sd-num">07</span> テスト・品質・セキュリティ戦略</div>
+        <div class="sd-item"><span class="sd-num">08</span> チーム開発と壁にぶつかった時</div>
+      </div>
+    </div>
+  </div>
+  <div class="page-number">07</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P08: 現実世界で活躍できるAI + Claude Code                      -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-banner">
+      <img src="images/a4-vertical/mineral/section_liquid_mercury_hd.png" alt="">
+      <div class="section-banner-overlay"></div>
+      <div class="section-banner-text">
+        <div class="section-label">Section 04</div>
+        <div class="section-title" style="color:#fff;">現実世界で活躍できるAIとは</div>
+      </div>
+    </div>
+
+    <p>
+      現実世界の問題は、たった1〜2分で解決できるほど単純ではありません。だから、賢くてあきらめやすいAIより、<strong>やり抜く力</strong>を持っていることが大切です。
+    </p>
+
+    <div class="cols-2" style="margin: 14px 0;">
+      <div class="card">
+        <div class="card-title">長時間の集中力</div>
+        <p class="text-small text-muted">
+          現実世界の問題に取り組むには、長時間集中して作業できる能力が必要。短い回答で終わらず、粘り強く問題に向き合うAIが求められる。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title">現実世界との干渉手段</div>
+        <p class="text-small text-muted">
+          MCPなどを通じて、より多くの手段で現実世界と干渉できること。ファイル操作、API呼び出し、外部サービスとの連携。
+        </p>
+      </div>
+    </div>
+
+    <h3>Claude Codeが優れている理由</h3>
+    <p>
+      Claude Codeは現実社会の問題を解決するのに最も適しています。長時間の集中力と、現実世界との干渉手段を併せ持つからです。上位の課金プランなら、とても使い切れないほどの量を利用できます。
+    </p>
+
+    <h3>ブラウザUIの限界</h3>
+    <p>
+      ブラウザには手元のPCと同じだけのストレージも処理能力もありません。ページを開き直せばまた最初からやり直し。巨大なものを作りたいならローカル環境が有利です。AIにとって最も大事な入力データを、ローカルならすべてのファイルを自在に与えられます。
+    </p>
+
+    <div class="mini-column">
+      <div class="card-title">弱点との向き合い方</div>
+      <p class="text-small text-muted" style="margin-top: 6px;">
+        自分には発達障害や吃音がありますが、能力はそれを補うように進化します。どこかのスキルが足りないなら、その分他の能力で補えばいい。他の人が欲しがる強みがあるなら、弱点なんて関係ない。弱みがあるからこそ、必要が生まれて力が身につくのです。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">08</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P09: コンテキスト管理の実践                                      -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-banner">
+      <img src="images/a4-vertical/abstarct/gradient_mesh_jewel.jpg" alt="">
+      <div class="section-banner-overlay"></div>
+      <div class="section-banner-text">
+        <div class="section-label">Section 05</div>
+        <div class="section-title" style="color:#fff;">コンテキスト管理の実践</div>
+      </div>
+    </div>
+
+    <p>
+      アプリは<strong>現実世界の課題を形にする作業</strong>です。だから、前提となる情報をちょっとでも多くAIに渡すことが最も重要です。整理されていない情報でも構いません。
+    </p>
+
+    <h3>AIに渡すべきコンテキストの例</h3>
+
+    <div class="cols-2" style="margin: 10px 0;">
+      <div class="card" style="border-top: 2px solid var(--color-accent);">
+        <div class="card-title" style="font-size: 12px;">議事録・会議記録</div>
+        <p class="text-small text-muted">
+          整理されていなくてOK。生の会話記録でも、AIは意図を汲み取れる。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-cyan);">
+        <div class="card-title" style="font-size: 12px;">簡単な企画書</div>
+        <p class="text-small text-muted">
+          プロジェクトの方向性やビジョンを示すもの。完璧でなくてもいい。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-gold);">
+        <div class="card-title" style="font-size: 12px;">ユーザー情報</div>
+        <p class="text-small text-muted">
+          実際のユーザーの情報は<strong style="color:var(--color-gold-light);">絶対に必要</strong>。直接話した記録があるなら最高。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid #e05555;">
+        <div class="card-title" style="font-size: 12px;">方向性・ビジョン</div>
+        <p class="text-small text-muted">
+          ファイル構成より「どこに向かうか」が絶対に欲しい情報。
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>成功の方程式:</strong> コンテキスト + ベストプラクティスを守る = 基本的に外すことはない。「何を作ればいいか」がAIに伝わっていて、ネット上の最適な手段で実行すれば、大きくずれることはありません。
+      </p>
+    </div>
+
+    <h3>CLAUDE.mdにこだわらなくていい</h3>
+    <p>
+      CLAUDE.mdは革新的な機能ですが、別に絶対使わなくてもいい。要するに<strong>情報がMarkdownになっていて、いつでも見返せる状態になっていること</strong>が大事です。複数のMarkdownファイルがあっても、フォルダで指定すれば勝手に読んでくれます。
+    </p>
+
+    <div class="gold-box">
+      <div class="card-title">AIエージェントとツール選択</div>
+      <p class="text-small">
+        Difyは今ホットな話題ですが、扱う課題によってはNotebookLMやClaude Codeで十分。多くの目的では、ゼロから作る必要はなくなっています。今の技術をもってすれば大半のことは実現できる。<strong>まずは出来る方法で実現してしまって、ブラッシュアップしたい時にちゃんと作る</strong>のが最善です。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">09</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P10: 人間とAIの役割分担 + ツール選択コスト                       -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 06</div>
+    <div class="section-title">人間とAIの役割分担</div>
+    <div class="section-desc">コード生成はAIに、方向性は人間に</div>
+
+    <div class="cols-2" style="margin-bottom: 14px;">
+      <div class="card" style="border-top: 3px solid var(--color-accent);">
+        <div class="card-title">AIがやること</div>
+        <p class="text-small">
+          <strong>コード生成は全てAIに任せる。</strong>中途半端に人間が介入するとかえって難しくなる。AIはAI流のコーディングスタイルで進めるので、中途半端に人間が変えると迅速な開発のメリットが活かせなくなります。
+        </p>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--color-gold);">
+        <div class="card-title">人間がやること</div>
+        <p class="text-small">
+          <strong>コンテキストの書類を最強にすること。</strong>最上流の「何を作るか」をひたすらアップデートする。プロトタイプを見ながら方向性を更新し続けることが大事です。
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        開発速度が速くなった分、<strong>UIクオリティを上げる余裕</strong>が生まれる。既存サービスと比較しながら何が足りないかを客観的に分析し、作品のレベルを上げていく。それが人間の最大の仕事です。AIに「方向性を見失わずにやってください」とお願いし続けるだけでもだいぶ違います。
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3>ツール選択とコスト</h3>
+
+    <div class="cost-bar">
+      <span class="cost-bar-label">無料</span>
+      <div class="cost-bar-track"><div class="cost-bar-fill" style="width: 30%; background: linear-gradient(90deg, #6ed4e4, #4ac0d0);"></div></div>
+      <span class="cost-bar-value">$0/月</span>
+    </div>
+    <p class="text-small text-muted" style="margin-left: 4px; margin-bottom: 8px;">Antigravityなど完全無料のツール。お金がないことはやらない理由にならない</p>
+
+    <div class="cost-bar">
+      <span class="cost-bar-label">エントリー</span>
+      <div class="cost-bar-track"><div class="cost-bar-fill" style="width: 55%; background: linear-gradient(90deg, var(--color-accent), var(--color-accent-light));"></div></div>
+      <span class="cost-bar-value">$20/月</span>
+    </div>
+    <p class="text-small text-muted" style="margin-left: 4px; margin-bottom: 8px;">Claude Code $20プランでも全然いい。課金するならClaude一択</p>
+
+    <div class="cost-bar">
+      <span class="cost-bar-label">本格派</span>
+      <div class="cost-bar-track"><div class="cost-bar-fill" style="width: 100%; background: linear-gradient(90deg, var(--color-gold), var(--color-gold-light));"></div></div>
+      <span class="cost-bar-value">$200/月</span>
+    </div>
+    <p class="text-small text-muted" style="margin-left: 4px; margin-bottom: 8px;">最高水準のモデルを使い続けても上限に達しないレベル。使いたいだけ使える</p>
+
+    <h3 style="margin-top: 14px;">主要AIツールの特徴</h3>
+    <div style="font-size: 10.5px; line-height: 1.7; color: var(--color-text-muted);">
+      <p style="margin-bottom: 4px;"><strong style="color: var(--color-accent-light);">Claude Code</strong> ー 集中力が長続きし、安定して80点レベルの成果物を出してくれる。ただし角丸・影付きの"Claude臭い"UIになりがちなので、デザインはちゃんと示すべき</p>
+      <p style="margin-bottom: 4px;"><strong style="color: var(--color-cyan);">Gemini</strong> ー 1回の回答精度は高いが、記憶力が低く長いタスクで精度が急落しやすい。Nano-banana Proは文字まで出力でき、レイアウト制約なしで解説資料を画像で生成できるのが画期的</p>
+      <p style="margin-bottom: 4px;"><strong style="color: #fff);">ChatGPT</strong> ー 記憶能力が高く、過去の会話を覚えている傾向がある。長期的なやりとりに向いている</p>
+      <p style="margin-bottom: 4px;"><strong style="color: var(--color-gold-light);">Cursor</strong> ー エディタとしてかなり洗練されておりバグも少ないが、コストはダントツで高い</p>
+      <p style="margin-bottom: 4px;"><strong style="color: #ff8888;">Antigravity</strong> ー 無料で使えるが、大規模PJではミスが増加。Claude Codeと比べるとアウトプットの水準は低い。まだアルファ版でバグも多い</p>
+      <p style="margin-bottom: 4px;"><strong style="color: var(--color-text);">Copilot</strong> ー 機能が多すぎて各機能のクオリティが低め。同じモデルでも回答精度が著しく低いことがある。ただしGitHub統合のPRレビューやタブ補完には活用の余地あり</p>
+      <p style="margin-bottom: 4px;"><strong style="color: var(--color-text);">Cline</strong> ー 小規模開発向き。Claude Codeでもmarkdownでコンテキスト管理すれば同等のことが可能</p>
+      <p style="margin-bottom: 4px;"><strong style="color: var(--color-text);">NotebookLM</strong> ー 実質RAGシステム。複数ファイルを元に質問したい場合に便利。ブラウザで動くClaude Codeのようなもの</p>
+      <p style="margin-bottom: 0;"><strong style="color: var(--color-text);">Notion AI</strong> ー 蓄積された情報から回答できるNotebookLM的ツール。Notion APIとObsidianでmarkdownに変換すれば、Notionの全情報をClaude Codeからアクセス可能にでき、最高精度のモデルであらゆる資料が作れるようになる</p>
+    </div>
+  </div>
+  <div class="page-number">10</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P11: テスト・品質・セキュリティ戦略                                -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 07</div>
+    <div class="section-title">テスト・品質・セキュリティ戦略</div>
+    <div class="section-desc">AIと機械の力で品質を担保する</div>
+
+    <h3>テストの仕組みは絶対に必要</h3>
+    <p>
+      テスト駆動開発ほど厳密でなくてもいいですが、<strong>動作をテストする仕組みがある</strong>のは絶対に良い。Playwrightなどを使って人間がデバッグしなくて良くするのが非常に大事です。
+    </p>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>AIは「これ確認してください」と言うけれど...</strong><br>
+        実はCLIツールをちゃんと設定すれば、AIでもブラウザ操作が全部コード経由でできてしまう。AIに「ちゃんと自分で確認して」とお願いし続けるだけでもだいぶ違います。
+      </p>
+    </div>
+
+    <h3>テスト戦略: 全部カバーしなくていい</h3>
+    <p>
+      人間がレビューしてみてダメだったところ、AIが苦手なところには傾向があります。<strong>AIがエラーを出す領域を徹底的にテストする</strong>のが最も効率的です。
+    </p>
+
+    <div class="divider"></div>
+
+    <h3>セキュリティ: AI + 機械的テストの組み合わせ</h3>
+
+    <div class="flow-row">
+      <div class="flow-box" style="border-color: var(--color-accent);">AI生成コード<br><span class="text-muted text-small">考える (不確実)</span></div>
+      <div class="flow-arrow">+</div>
+      <div class="flow-box" style="border-color: var(--color-cyan);">Linter / テスト<br><span class="text-muted text-small">機械的検証 (確実)</span></div>
+      <div class="flow-arrow">=</div>
+      <div class="flow-box" style="border-color: var(--color-gold);">品質担保<br><span class="text-muted text-small">相互補完</span></div>
+    </div>
+
+    <p>
+      AIは「考える」ので機械的に処理できません。だから<strong>AI + 機械的なテスト(linter等)で確実性を担保</strong>する。数学的に動いているプロセスで正しさを検証するのが大事です。AIはベストプラクティスを知っているので、改善する意欲さえあればセキュリティ問題は結構解決できます。
+    </p>
+
+    <div class="cols-2">
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">マルチエージェントレビュー</div>
+        <p class="text-small text-muted">
+          レビュー専用のAIを設置する。今のAIは知能的に人間に近いレベルで、レビューは人間がやらなくてもAIが既にできる。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">定期的なアーキテクチャ見直し</div>
+        <p class="text-small text-muted">
+          マルチエージェントで多角的にレビューすれば、構造的な問題も基本的に発見・修正できる。
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="page-number">11</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P12: チーム開発 + 壁にぶつかった時                               -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 08</div>
+    <div class="section-title">チーム開発と壁にぶつかった時</div>
+    <div class="section-desc">AI時代のチーム運用と問題解決のアプローチ</div>
+
+    <h3>AI時代のチーム開発</h3>
+    <p>
+      AIによって変更の速度がかなり早くなるので、<strong>ブランチを分ける</strong>のがすごく大事です。個人でやっている時もブランチを使って作業を分けること。AIは生成の待ち時間があるので、複数プロジェクトを並行で進めるほど生産性が上がります。
+    </p>
+
+    <div class="cols-2" style="margin: 12px 0;">
+      <div class="card" style="border-top: 2px solid var(--color-accent);">
+        <div class="card-title" style="font-size: 12px;">2人チームの理想形</div>
+        <p class="text-small text-muted">
+          1人が開発、1人がレビュー。または2つのプロジェクトを回して、一定期間で担当をスワップ。他の人の視点で改善できる。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-gold);">
+        <div class="card-title" style="font-size: 12px;">非AIメンバーとの共存</div>
+        <p class="text-small text-muted">
+          変更範囲が限られていれば、AI開発をやっていないメンバーでもGitのPull Requestでレビュー可能。
+        </p>
+      </div>
+    </div>
+
+    <div class="gold-box">
+      <div class="card-title">マジックワード</div>
+      <p class="text-small" style="margin-top: 4px;">
+        <strong>「差分を最小化する」</strong> ー 共同開発時に差分さえ最小化しておけば、人間がレビューすることがギリギリ可能になる。<br>
+        <strong>「既存実装を参照して」</strong> ー AIが既存のコードスタイルに合わせてくれるので、統一感が保たれる。
+      </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3>壁にぶつかった時の対処法</h3>
+    <p>
+      少なくともWeb開発においては致命的に困ることはあまり起こりません。それでも詰まった時は以下のアプローチが有効です。
+    </p>
+
+    <ol class="num-list">
+      <li><strong>別のAIに聞く:</strong> Claude Codeは現場の制約を意識しすぎることがある。Geminiに聞くと、全く別のアイデアを提案してくれることが多い。</li>
+      <li><strong>先人の知恵を参照する:</strong> AIはどんな分野でもそこそこの答えをくれるが、有名な分野では人間がもっと良いものを作っている。先人が同じことをやっているなら、そちらの説明が優れていることも多い。</li>
+      <li><strong>とにかく試す:</strong> 有名なツールでも自分のユースケースに合わないことがある。いろんなツールを試行錯誤してみるのが学び続ける最善の方法。情報源はX、ニュース、人からの口コミ。</li>
+    </ol>
+  </div>
+  <div class="page-number">12</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P13: SECTION DIVIDER - PART III 実践例                        -->
+<!-- ============================================================ -->
+<div class="page section-divider" style="--section-bg: url('images/a4-vertical/mineral/section_obsidian_fire.jpg')">
+  <div class="section-divider-gradient"></div>
+  <div class="page-inner">
+    <div class="section-divider-content">
+      <div class="section-divider-part-label">PART III</div>
+      <div class="section-divider-title">実践例</div>
+      <div class="section-divider-subtitle">現場で証明された方法論</div>
+      <div class="section-divider-summary">
+        <p>Unity開発での失敗と学び、採用マッチングシステムの成功体験、そして幅広いAI活用事例。実際のプロジェクトを通じて得られた知見を余すところなく共有します。</p>
+      </div>
+      <div class="section-divider-sections">
+        <div class="sd-item"><span class="sd-num">09</span> ケーススタディ: Unity開発の教訓</div>
+        <div class="sd-item"><span class="sd-num">10</span> ケーススタディ: 採用マッチング 序盤</div>
+        <div class="sd-item"><span class="sd-num">11</span> 採用マッチング 中盤・終盤</div>
+        <div class="sd-item"><span class="sd-num">12</span> 運用と品質管理</div>
+        <div class="sd-item"><span class="sd-num">13</span> AI活用の幅広い事例集</div>
+        <div class="sd-item"><span class="sd-num">14</span> AIが書類をアップデートする</div>
+      </div>
+    </div>
+  </div>
+  <div class="page-number">13</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P14: ケーススタディ Unity（1ページに拡大）                       -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-banner">
+      <img src="images/a4-vertical/mineral/stack_bismuth_tower.jpg" alt="">
+      <div class="section-banner-overlay"></div>
+      <div class="section-banner-text">
+        <div class="section-label">Section 09 &mdash; Case Study</div>
+        <div class="section-title" style="color:#fff;">Unity開発の教訓</div>
+      </div>
+    </div>
+
+    <div class="card" style="background: rgba(224,85,85,0.06); border: 1px solid rgba(224,85,85,0.15); margin-bottom: 10px;">
+      <div class="card-title" style="color: #ff8888;">結論: UnityはAI開発に決定的に向いていない</div>
+      <p class="text-small">
+        ビルド時間などあらゆる操作が遅く、AIへのフィードバックが少ない。AIは試行錯誤が基本なのに、それが不得意なUnityでは本領を発揮できません。C#の学習データも少なく、プロジェクト独自のルールにも対応しづらい。
+      </p>
+    </div>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>実体験:</strong> AIを使ってプロトタイプは<strong>1日</strong>でできたが、修正に<strong>2週間</strong>かかった。手作業なら1週間で終わった内容。AIは何も考えないで使うとコード負債を絶対に生み出す。AIを使って生成したコードのミスがそのまま製品版に使われてしまった問題も発生した。
+      </p>
+    </div>
+
+    <h3>なぜUnityでAIが苦戦するのか</h3>
+    <div class="cols-2" style="margin: 10px 0;">
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">フィードバックの遅さ</div>
+        <p class="text-small text-muted">
+          ビルド・コンパイルに時間がかかり、AIの試行錯誤サイクルが回らない。Web開発なら即座に結果を確認できるが、Unityでは1回の検証に数分かかることも。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">学習データの不足</div>
+        <p class="text-small text-muted">
+          C#やUnity固有のAPIは学習データが少なく、プロジェクト独自ルールへの対応も難しい。「既存コードをよく確認して」が緩和策として有効。
+        </p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <h3>教訓と対策</h3>
+    <div class="cols-2" style="margin: 10px 0;">
+      <div class="card" style="border-top: 2px solid var(--color-accent);">
+        <div class="card-title" style="font-size: 12px;">開発とレビューを分離</div>
+        <p class="text-small text-muted">
+          実行するAIとレビューするAIは分かれていた方がいい。AIのミス率は人間より高いので、絶対にレビューは必要。
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-cyan);">
+        <div class="card-title" style="font-size: 12px;">大規模PJへの対策: Askモード</div>
+        <p class="text-small text-muted">
+          待ち時間が長いプロジェクトではAskモードを活用。AIは膨大な情報を読むのが人間より得意。「聞く」ことは絶対やるべき。
+        </p>
+      </div>
+    </div>
+
+    <div class="gold-box">
+      <div class="card-title">属人化の解決: NotebookLM</div>
+      <p class="text-small">
+        プロジェクトの全ファイルをNotebookLMにまとめてしまえば、「あの人しか分からない」状態を解消できる。ファイルが存在するならAIが答えられるようにできます。巨大プロジェクトでは、<strong>情報収集と方針検討の段階でAIを使う</strong>のが最も効果的です。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">14</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P15: ケーススタディ 採用マッチング 序盤                           -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-banner">
+      <img src="images/a4-vertical/mineral/section_pyrite_cluster.jpg" alt="">
+      <div class="section-banner-overlay"></div>
+      <div class="section-banner-text">
+        <div class="section-label">Section 10 &mdash; Case Study</div>
+        <div class="section-title" style="color:#fff;">採用マッチングシステム開発</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <span class="tag">Claude Code</span>
+      <span class="tag">Supabase</span>
+      <span class="tag">Vercel</span>
+      <span class="tag">Resend</span>
+      <span class="tag">Notion</span>
+      <span class="tag">Fork (Git GUI)</span>
+    </div>
+
+    <div class="phase-badge">PHASE 1 ― 序盤</div>
+
+    <h3>仕様策定とコンテキスト管理</h3>
+    <p>
+      Part IIで述べたコンテキスト管理が、実際のプロジェクトでどれほど重要かを痛感しました。Notionで作成した要件・DB設計の資料をMarkdownに書き出してAIに渡すことで、AIが誤解する余地を大幅に減らせました。<strong>コンテキストの質がそのまま成果物の質に直結します。</strong>@メンションを使えば見落としはまず起こりません。
+    </p>
+
+    <h3>スケジュール見積もりの自動化</h3>
+    <p>
+      仕様書と現在のプロジェクト状態を照らし合わせ、各機能の残り時間と完了率をAIに報告させることで、実装漏れが起こりにくくなります。
+    </p>
+
+    <h3>マルチエージェントとレビュー体制</h3>
+
+    <div class="flow-row">
+      <div class="flow-box">Agent A<br><span class="text-muted text-small">開発</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Agent B<br><span class="text-muted text-small">レビュー</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Agent C<br><span class="text-muted text-small">レビュー</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">修正 & Merge<br><span class="text-muted text-small">反映</span></div>
+    </div>
+
+    <p>
+      複数のAIが同時に編集すると衝突が起きますが、レビューなら起きません。コード生成AIのボトルネックは生成より状況把握と方針決定。レビューが完了した時点で最大のボトルネックが解消されるため、効率は劇的に向上します。
+    </p>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>Claude Codeなら設定不要。</strong>「マルチエージェントを使って」と口頭で伝えるだけで、複数のエージェントが異なる観点から調査してくれます。速いだけでなく質も高い。
+      </p>
+    </div>
+
+    <div class="cols-2">
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">Linter / Formatter / Husky</div>
+        <p class="text-small text-muted">
+          AIも人間も間違いを起こす。だからcommit時に自動修正を入れて、クリーンなコードしか書けない仕組みにする。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">単体テスト / E2E (Playwright)</div>
+        <p class="text-small text-muted">
+          単体テストは絶対に必要。E2EはPlaywrightで実装。コストは重いがバグ修正の強力なツール。Playwright MCPを使えばAIにブラウザ操作を任せることも可能。
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="page-number">15</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P16: 採用マッチング 中盤 + 終盤                                 -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="phase-badge">PHASE 2 ― 中盤</div>
+
+    <h3>ツール選択の教訓</h3>
+    <p>
+      Claudeで上手くいっていたところにAntigravityを入れたのが裏目に。開発方針が異なり、規模が大きくなった時に性能低下が顕著に。回答速度は速いが失敗率が高く、トータルで時間がかかりました。
+    </p>
+
+    <h3>ベストプラクティスに沿う開発</h3>
+    <p>
+      ベストプラクティスは一般的に知られている最良の方法で、AIも知っている可能性が高い。「ベスト」と名がつくだけあって、選択を間違う余地がなく、AI開発との相性が非常に良いです。
+    </p>
+
+    <div class="gold-box">
+      <div class="card-title">GeminiとClaude Codeの使い分け</div>
+      <p class="text-small" style="margin-top: 6px;">
+        Geminiは<strong>アドバイザー</strong>、Claude Codeは<strong>現場作業員</strong>。Geminiに提案書を作らせ、Claude Codeに渡して、その意見を再びGeminiに返す。Geminiは作業コストを知らないからこそ公平に人間目線で話ができ、Claude Codeは現場の制約を知っている。両者が集まることでよりよいものができます。
+      </p>
+    </div>
+
+    <h3>フレームワークの導入効果</h3>
+    <div style="margin-bottom: 10px;">
+      <span class="tag-gold tag">Shadcn</span>
+      <span class="tag-gold tag">Zod</span>
+      <span class="tag-gold tag">TanStack</span>
+      <span class="tag-gold tag">Resend</span>
+    </div>
+    <p>
+      フレームワークはテンプレートや制約を与え、AIがミスをする可能性を大幅に減らします。AIが直接操作すべきコードの量を減らせるため、大きなプロジェクトでもよりシンプルに記述できます。
+    </p>
+
+    <h3>Gitオペレーションの自動化</h3>
+    <p>
+      コミットやあらゆるGitHubの操作もAIに任せられます。AIは試行錯誤ベースの開発になるため履歴が長くなるので、<strong>Squash(commitをまとめる)してからpush</strong>することを強く推奨します。
+    </p>
+
+    <div class="divider"></div>
+
+    <div class="phase-badge">PHASE 3 ― 終盤・リリース</div>
+
+    <h3>インフラ設定とGeminiの活躍</h3>
+    <p>
+      Supabase, Resend, Vercel, Google Cloud(OAuth), Azure(Entra Auth)の設定はまだ手動でやることが多い。そんな時Geminiに聞けば80%は何とかなります。新しいツールの提案を受けたらClaude Codeに伺いを立て、良さそうなら導入を進めていく。
+    </p>
+
+    <div class="card">
+      <div class="card-title" style="font-size: 12px;">本番環境構築のポイント</div>
+      <p class="text-small text-muted">
+        初めてならほぼ間違いなくトラブルが起きる。レビュー/プレリリース段階で思いっきり操作して、失敗しないと身につかない。最低1〜2週間は本番環境構築に確保すべき。
+      </p>
+    </div>
+  </div>
+  <div class="page-number">16</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P17: 運用と品質管理                                             -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 12 &mdash; continued</div>
+    <div class="section-title">運用と品質管理</div>
+    <div class="section-desc">鍵管理、画像生成、データベース、セルフレビュー</div>
+
+    <h3>環境変数と鍵の管理</h3>
+    <p>
+      Web開発の鬼門は認証と鍵の管理。大体のトラブルは鍵がないことによる認証失敗と、鍵の漏洩によるセキュリティリスクです。鍵はSlackやNotionで必ず一元管理し、Vercelなどにあらかじめ登録して安全に保管しながら見返せるようにしておくのが良い。
+    </p>
+
+    <div class="card" style="border-left: 3px solid var(--color-cyan); margin-bottom: 14px;">
+      <div class="card-title">認証とDBが導入されることで...</div>
+      <p class="text-small text-muted">
+        認証とDBがなければWeb開発ははるかに楽になりますが、ビジネス的な要です。この2つの導入によって複雑さや開発期間が延びることを、あらかじめ見越しておく必要があります。
+      </p>
+    </div>
+
+    <h3>Gemini MCP と画像生成</h3>
+    <p>
+      AIは画像や図形情報がデフォルトで扱えないため、Gemini MCP(Nanobanana)との相性が良い。おすすめは<strong>背景画像を大量に生成してストック</strong>しておくこと。背景画像なら今の生成AIでも信じられないほど作品のレベルを押し上げます。
+    </p>
+
+    <h3>Supabaseの環境管理</h3>
+    <p>
+      main(production)以外にdevelopment(persistent)を用意しておくのがおすすめ。Automatic Branchingは認証情報が変わるので難しい。リモートには本番とプレビューの2つを用意し、E2Eテストの場合にのみローカルのSupabaseを使うと、遅延や条件一致の観点からも良いです。
+    </p>
+
+    <div class="divider"></div>
+
+    <h3>セルフレビューの極意</h3>
+
+    <div class="cols-2">
+      <div class="card" style="border-top: 2px solid var(--color-accent);">
+        <div class="card-title" style="font-size: 12px;">技術レビュー</div>
+        <p class="text-small text-muted">
+          「マルチエージェントを使って、このプロジェクトがリリース可能か判断して100点満点で評価して」
+        </p>
+      </div>
+      <div class="card" style="border-top: 2px solid var(--color-gold);">
+        <div class="card-title" style="font-size: 12px;">ビジネスレビュー</div>
+        <p class="text-small text-muted">
+          「マルチエージェントを使って、/contextの情報をもとに、当初の目的を達成しているか100点満点で評価して」
+        </p>
+      </div>
+    </div>
+
+    <p style="margin-top: 10px;">
+      コード生成AIは目標達成の手段ではなく、意見を出し合い作品をより良くしていくパートナーになりえます。個人開発で視野が狭くなりがちな問題を、第三者の目線から補ってくれます。
+    </p>
+  </div>
+  <div class="page-number">17</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P18: AI活用の幅広い事例集                                       -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-banner">
+      <img src="images/a4-vertical/mineral/stack_crystal_cave.jpg" alt="">
+      <div class="section-banner-overlay"></div>
+      <div class="section-banner-text">
+        <div class="section-label">Section 13</div>
+        <div class="section-title" style="color:#fff;">AI活用の幅広い事例集</div>
+      </div>
+    </div>
+
+    <p>
+      「コードで記述できるもの」の範囲は急速に拡大しています。以前は専門ソフトが必要だった領域がコードで書けるようになり、AIがそのコードを書ける。つまり<strong>AIに頼める仕事の幅が爆発的に広がっている</strong>ということです。
+    </p>
+
+    <div class="cols-2" style="margin: 10px 0;">
+      <div class="card">
+        <div class="card-title" style="font-size: 12px; color: var(--color-accent-light);">自動化・業務効率化</div>
+        <p class="text-small text-muted">
+          定型業務のスクリプト化、データ変換パイプライン、レポート自動生成。ビジネスの反復作業を直接削減できる。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px; color: var(--color-cyan);">ドキュメント・資料生成</div>
+        <p class="text-small text-muted">
+          営業資料、プレゼン、LP、社内ダッシュボード。ビジネスに直結するアウトプットをAIが即座に形にする。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px; color: var(--color-gold);">コードで記述できる領域</div>
+        <p class="text-small text-muted">
+          動画編集(FFmpeg)、3Dモデリング(Blender/OpenSCAD)、物理シミュレーション。専門ソフトの手作業がコードに置き換わりつつある。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px; color: #ff8888;">AIツールをAIで作る</div>
+        <p class="text-small text-muted">
+          Claude Codeのワンプロンプトで掲示板アプリを構築。v0ライクなUI生成ツールもAIで開発。開発そのものがAIの対象に。
+        </p>
+      </div>
+    </div>
+
+    <div class="gold-box">
+      <div class="card-title">スライド生成の進化: Skywork + Nano-banana</div>
+      <p class="text-small">
+        前回の実践授業のスライドはSkyworkで<strong>完全にAIで制作</strong>。さらにNano-bananaを使えば、文字まではっきり生成できる時代に。Claude Codeと組み合わせると、マルチエージェントで並列にパターンを作り、納得いくまで自動でやり直してくれる。<strong>AIを使うことすらAI経由で可能</strong>な時代です。
+      </p>
+    </div>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>実例:</strong> <a href="https://github.com/nekodigi" style="color: var(--color-accent-light);">github.com/nekodigi</a> では、Cursorで完全にAI生成したアプリ集、Claude Codeでの高速PoC、UnityのVFXツールキット、GPU物理シミュレーションなど200以上のプロジェクトが公開されています。
+      </p>
+    </div>
+
+    <div class="cols-2">
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">デザイントレンドの変遷</div>
+        <p class="text-small text-muted">
+          ワンクリックで同じページを別のデザインに切り替えるサイトを作成。美術の歴史をインタラクティブに体験できる。
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size: 12px;">実用ツール群</div>
+        <p class="text-small text-muted">
+          地図ブラウザ、OCR翻訳ツール、LINEチャットボット連携。一人で「欲しかったサービス」を形にできる時代。
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="page-number">18</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- P19: AIが書類をアップデートする + クロージング                     -->
+<!-- ============================================================ -->
+<div class="page">
+  <div class="page-inner">
+    <div class="section-label">Section 14</div>
+    <div class="section-title">AIはあらゆる書類の作り方を<br>アップデートする</div>
+    <div class="section-desc">Webで表示できるあらゆる情報をAIが作れる時代へ</div>
+
+    <p>
+      理論的にあらゆるWeb上のコンテンツをAIが生成できるようになった今、Webで表示できるあらゆる情報も理論的にはAIが作れるようになっています。
+    </p>
+
+    <div class="cols-2" style="margin: 12px 0;">
+      <div class="card" style="text-align:center;">
+        <div class="card-title" style="font-size: 12px;">ビジネスに直結する成果物</div>
+        <p class="text-small text-muted">
+          営業資料、顧客向けレポート、社内ダッシュボード、採用ページ。売上やオペレーションに直結するものが作れる
+        </p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="card-title" style="font-size: 12px;">なぜ何でも作れるのか</div>
+        <p class="text-small text-muted">
+          ChatGPTの「Canvas」やClaudeの「Artifacts」は、裏でHTMLを動的に生成している。Webで表現できるもの＝AIの出力になりえる
+        </p>
+      </div>
+    </div>
+
+    <div class="highlight-box">
+      <p class="text-small">
+        <strong>この資料自体がその証明です。</strong><br>
+        コード生成AIにアシストして作成しました。人間が原稿を渡し、AIが完成版を作り、それを見ながら原稿をアップデートする。考えを文章にする変換作業をAIが肩代わりし、人間は根底となるアイデアにフォーカスできます。
+      </p>
+    </div>
+
+    <div class="divider" style="margin: 20px 0;"></div>
+
+    <div class="section-label">さいごに</div>
+    <div class="section-title section-title-lg">これからの話</div>
+
+    <div style="margin: 24px 0; padding: 28px 24px; background: linear-gradient(135deg, rgba(139,124,248,0.1) 0%, rgba(224,180,92,0.08) 100%); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+      <p style="font-size: 17px; line-height: 2.2; text-align: center; font-weight: 500; color: #fff; margin-bottom: 0;">
+        技術と人間の両方を理解し、<br>
+        技術の力で日々の体験をより良いものにしていく。<br>
+        <strong style="color: var(--color-accent-light); font-size: 19px;">技術を届けられる人間に、なっていこう。</strong>
+      </p>
+    </div>
+
+    <div style="flex: 1;"></div>
+
+    <div style="text-align: center; padding: 16px 0 8px; border-top: 1px solid var(--color-divider);">
+      <p class="text-small text-muted" style="margin-bottom: 4px;">
+        AI-Driven Development Practical Guide for KOSEN Students
+      </p>
+      <p style="font-size: 10px; color: var(--color-text-muted); opacity: 0.6; margin-bottom: 0;">
+        Created with the assistance of AI code generation tools &mdash; 2026
+      </p>
+    </div>
+  </div>
+  <div class="page-number">19</div>
+</div>
+
+</div><!-- .pages-wrapper -->
+
+</body>
+</html>
